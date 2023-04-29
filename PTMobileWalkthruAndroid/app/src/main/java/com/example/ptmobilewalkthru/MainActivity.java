@@ -15,7 +15,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -61,10 +60,10 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         try {
-            bitmap = BitmapFactory.decodeStream(getAssets().open("kitten.jpg"));
-            // loading serialized torchscript module from packaged into app android asset model.pt,
-            // app/src/model/assets/model.pt
-            module = Module.load(assetFilePath(this, "model.pt"));
+            bitmap = BitmapFactory.decodeStream(getAssets().open("dog.JPEG"));
+            // loading serialized torchscript module from packaged into app android asset Next-ViT.pt,
+            // app/src/model/assets/Next-ViT.pt
+            module = Module.load(assetFilePath(this, "FasterNet.pt"));
         } catch (IOException e) {
             Log.e("PTMobileWalkthru", "Error reading assets", e);
             finish();
@@ -75,33 +74,38 @@ public class MainActivity extends AppCompatActivity {
         imageView.setImageBitmap(bitmap);
 
         final Button button = findViewById(R.id.inferButton);
-        button.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(bitmap,
-                        TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
+        button.setOnClickListener(v -> {
+            final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(bitmap,
+                    TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
 
-                // running the model
-                final Tensor outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
 
-                // getting tensor content as java array of floats
-                final float[] scores = outputTensor.getDataAsFloatArray();
+            IValue val = IValue.from(inputTensor);
+            long time1= System.currentTimeMillis();
+            // running the model
+            IValue result = module.forward(val);
+            long time2 = System.currentTimeMillis();
+            System.out.println(time2-time1);
 
-                // searching for the index with maximum score
-                float maxScore = -Float.MAX_VALUE;
-                int maxScoreIdx = -1;
-                for (int i = 0; i < scores.length; i++) {
-                    if (scores[i] > maxScore) {
-                        maxScore = scores[i];
-                        maxScoreIdx = i;
-                    }
+
+            final Tensor outputTensor = result.toTensor();
+            // getting tensor content as java array of floats
+            final float[] scores = outputTensor.getDataAsFloatArray();
+
+            // searching for the index with maximum score
+            float maxScore = -Float.MAX_VALUE;
+            int maxScoreIdx = -1;
+            for (int i = 0; i < scores.length; i++) {
+                if (scores[i] > maxScore) {
+                    maxScore = scores[i];
+                    maxScoreIdx = i;
                 }
-
-                String className = org.pytorch.helloworld.ImageNetClasses.IMAGENET_CLASSES[maxScoreIdx];
-
-                // showing className on UI
-                TextView textView = findViewById(R.id.resultView);
-                textView.setText(className);
             }
+
+            String className = org.pytorch.helloworld.ImageNetClasses.IMAGENET_CLASSES[maxScoreIdx];
+
+            // showing className on UI
+            TextView textView = findViewById(R.id.resultView);
+            textView.setText(className);
         });
     }
 
